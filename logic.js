@@ -1,7 +1,33 @@
 
+
+	// export SetLoadBalanceMode() entry point to jQuery
+	var LoadBalanceMode;
+
+	var LOAD_BALANCE_MODE_NONE = 0;
+	var LOAD_BALANCE_MODE_SFC  = 1;
+	var LOAD_BALANCE_MODE_KD   = 2;
+		
+		
+
+// bind to jQuery
 $(document).ready(function() {
 	$( "#pick-mode" ).buttonset();
+	
+	
+	$('#radio1').click(function() {
+		LoadBalanceMode(LOAD_BALANCE_MODE_NONE);
+	});
+	
+	$( '#radio2').click(function() {
+		LoadBalanceMode(LOAD_BALANCE_MODE_SFC);
+	});
+	
+	$( '#radio3').click(function() {
+		LoadBalanceMode(LOAD_BALANCE_MODE_KD);
+	}); 
 });
+
+    
 
 function run() {
 
@@ -58,7 +84,7 @@ function run() {
 		"11------",
 		"--------",
 		"--------",
-		"--------",
+		"-----33-",
 		"--------"
 		],
 		
@@ -70,7 +96,7 @@ function run() {
 		"--------",
 		"--------",
 		"--------",
-		"--------"
+		"-----33-"
 		],
 		
 		[
@@ -80,7 +106,7 @@ function run() {
 		"11------",
 		"--------",
 		"--------",
-		"--------",
+		"---33---",
 		"--------"
 		],
 		
@@ -91,7 +117,7 @@ function run() {
 		"-11-----",
 		"--------",
 		"--------",
-		"--------",
+		"----333--",
 		"--------"
 		]
 	];
@@ -99,7 +125,8 @@ function run() {
 	var movement_vectors = [
 		[1,1,0],
 		[0,1,0],
-		[1,0,1]
+		[1,0,1],
+		[0,-1,-1]
 	];
 	
 	// number of cells on each axis
@@ -109,10 +136,10 @@ function run() {
 	var NUM_WORKERS = 3;
 
 
-	medea.Ready("canvas",{dataroot:'medea/data'},['debug','keycodes', 'standardmesh'],function() {
+	medea.Ready("canvas",{dataroot:'medea/data'},['debug','keycodes', 'standardmesh', 'simpleanim'],function() {
 	
 		// -----------------------------------------------------
-		var GetOutlineVertices = function() {
+		var GetOutlineVertices =  function() {
 			return [ 
 					 // Front face
 				  -1.0, -1.0,  1.0,
@@ -249,6 +276,10 @@ function run() {
 			for(var i = 1; i < NUM_WORKERS;++i) {
 				cube_meshes.push(medea.CloneMesh(cube_meshes[0], materials[i]));
 			}
+			
+			for(var i = 0; i < NUM_WORKERS;++i) {
+				cube_meshes[i].Tag('cube_mesh');
+			}
 			return cube_meshes;
 		};
 		
@@ -329,10 +360,19 @@ function run() {
 							continue;
 						}
 						
+	
+						var move = movement_vectors[symbol - '0'];
+						
 						var nd = medea.CreateNode(n++);
 						ya.push([{
-							node 	: nd,
-							symbol	: symbol - '0'
+							  node 				: nd
+							, symbol			: symbol - '0'
+							, worker_index 		: 0
+							, movement_vector	: [ 
+									  move[0]
+									, move[1]
+									, move[2]
+								]
 							}
 						]);
 						
@@ -348,8 +388,27 @@ function run() {
 			return occupation;
 		};
 		
-		var current_step = 0;
 		
+		// -----------------------------------------------------
+		var ClearCells = function(occupation) {
+		
+			for (var x = 0; x < NUM_CELLS; ++x) {
+				var xa = occupation[x];
+				for (var y = 0; y < NUM_CELLS; ++y) {
+					var ya = xa[y];
+					for (var z = 0; z < NUM_CELLS; ++z) {
+					
+						var cell = ya[z];
+						for(var i = 0; i < cell.length; ++i) {
+							scene_root.RemoveChild(cell[i].node);
+						}
+					}
+				}
+			}
+		};
+		
+		
+		var current_step = 0;
 		
 		// -----------------------------------------------------
 		// Advance the given cell by `delta` steps.
@@ -363,23 +422,35 @@ function run() {
 			var visible = 1;
 			for(var i = 0; i < current_cell.length; ++i) {
 			
+				if(i > 0)break;
+			
 				var node = current_cell[i].node;
 				if(node.Name() in handled) {
 					continue; 
 				}
-				var vec = movement_vectors[current_cell[i].symbol];
 				
+				var vec = current_cell[i].movement_vector;
 				var pos = [x,y,z];
 				
-				// prevent negative mod
-				var positive_offset = (delta < 0 ? - delta : delta) * NUM_CELLS;
-				pos[0] = (pos[0] + vec[0] * delta + positive_offset) % NUM_CELLS;
-				pos[1] = (pos[1] + vec[1] * delta + positive_offset) % NUM_CELLS;
-				pos[2] = (pos[2] + vec[2] * delta + positive_offset) % NUM_CELLS;
+				// handle ping-pong end conditions
+				for(var j = 0; j < 3; ++j) {
+					if(pos[j] === NUM_CELLS-1 && vec[j] * delta > 0) {
+						vec[j] = -vec[j];
+					}
+					if(pos[j] === 0 && vec[j] * delta < 0) {
+						vec[j] = -vec[j];
+					}
+				}
 				
+				pos[0] += vec[0] * delta;
+				pos[1] += vec[1] * delta;
+				pos[2] += vec[2] * delta;
+				
+
 				if(!(pos[0] != x || pos[1] != y || pos[2] != z)) {
 					alert('block not moved');
 				}
+			
 					
 				var shortcut = occupation[ pos[0] ][ pos[1] ];
 				shortcut[ pos[2] ].push(current_cell[i]);
@@ -389,25 +460,36 @@ function run() {
 				if (shortcut[ pos[2] ].length > 1) {
 					if(current_cell[i].node.Enabled()) {
 						--visible;
-						current_cell[i].node.Enabled(false);
+						//current_cell[i].node.Enabled(false);
 					}
 				}
 				
+				// register animator to slowly move to target position. Also setup a finishing
+				// callback to avoid changing the cube color before we've reached final position.
+				//
+				// this is also necessary because worker_index is updated by LoadBalance(),
+				// which is called after StepCell() returns.
+				var anim = medea.CreateFromToAnimator(node.LocalPos(), DiscretePositionToLocal(pos), 0.5, true);
+				anim.FinishingCallback( (function(cell) { 
+						return function() {
+							cell.node.RemoveAllEntities('cube_mesh');
+							cell.node.AddEntity(cube_meshes[cell.worker_index]);
+						};
+					}) (current_cell[i])
+				);
+				
+				node.AddEntity(anim);
+				handled[node.Name()] = true;
+				
 				current_cell.shift();
 				--i;
-	
-				
-				node.ResetTransform();
-				node.Translate(DiscretePositionToLocal(pos));
-				
-				handled[node.Name()] = true;
 			}
 			
 			// activate the next node in our own waiting list, if any
 			if(current_cell.length > 0) {
 				if(!current_cell[0].node.Enabled()) {
 					++visible;
-					current_cell[0].node.Enabled(true);
+					//current_cell[0].node.Enabled(true);
 				}
 			}
 			
@@ -416,30 +498,43 @@ function run() {
 		
 		
 		// -----------------------------------------------------
+		var CountLoads = function(occupation) {
+	
+			var count_loads = 0;
+			for (var x = 0; x < NUM_CELLS; ++x) {
+				var xa = occupation[x];
+				for (var y = 0; y < NUM_CELLS; ++y) {
+					var ya = xa[y];
+					for (var z = 0; z < NUM_CELLS; ++z) {
+					
+						var cell = ya[z];
+						if(cell.length === 0) {
+							continue;
+						}
+						
+						++count_loads;
+					}
+				}
+			}
+			
+			return count_loads;
+		}
+		
+		
+		// -----------------------------------------------------
 		// Do load balancing using SFC
-		var LoadBalance = function() {
+		var LoadBalanceSFC = function(occupation) {
 			
 			var curve_len = NUM_CELLS * NUM_CELLS * NUM_CELLS;
 			
-			var count_loads = 0;
-			for (var i = 0; i < curve_len; ++i) {
-				var curve_x = hilbert_vertices[i*6];
-				var curve_y = hilbert_vertices[i*6 + 1];
-				var curve_z = hilbert_vertices[i*6 + 2];
-				
-				var cell = occupation[curve_x][curve_y][curve_z];
-				if(cell.length === 0) {
-					continue;
-				}
-				
-				++count_loads;
-			}
+			// first determine how many active loads there are and what the fair share is
+			var count_loads = CountLoads(occupation);
 			
 			var loads_handled = 0;
 			var worker_index = 0;
 			var fair_share = Math.floor(count_loads/NUM_WORKERS);
 			
-			
+			// then distribute them to the workers, following the hilbert curve
 			for (var i = 0; i < curve_len; ++i) {
 				if(loads_handled === count_loads) {
 					return;
@@ -461,9 +556,169 @@ function run() {
 				++loads_handled;
 				
 				var nd = cell[0].node;
-				nd.RemoveAllEntities();
-				nd.AddEntity(cube_meshes[worker_index]);
+				cell[0].worker_index = worker_index;
 			} 
+		};
+		
+		
+		// -----------------------------------------------------
+		// Do no load balancing at all - each node gets their
+		// index in natural order assigned
+		var LoadBalanceNone = function(occupation) {
+		
+			// first determine how many active loads there are and what the fair share is
+			var count_loads = CountLoads(occupation);
+				
+			var loads_handled = 0;
+			var worker_index = 0;
+			var fair_share = Math.floor(count_loads/NUM_WORKERS);
+			
+			
+			// then just assign them in natural order
+			for (var x = 0; x < NUM_CELLS; ++x) {
+				var xa = occupation[x];
+				for (var y = 0; y < NUM_CELLS; ++y) {
+					var ya = xa[y];
+					for (var z = 0; z < NUM_CELLS; ++z) {
+						if(loads_handled === count_loads) {
+							return;
+						}
+					
+						var cell = ya[z];
+						if(cell.length === 0) {
+							continue;
+						}
+						
+						if(loads_handled - worker_index * fair_share >= fair_share && worker_index < NUM_WORKERS-1) {
+							++worker_index;
+						}
+						
+						++loads_handled;
+				
+						var nd = cell[0].node;
+						cell[0].worker_index = worker_index;
+					}
+				}
+			}
+		};
+		
+		
+		// -----------------------------------------------------
+		var LoadBalance = function(occupation, first_time, update_meshes_immediately) {
+			var mode = LoadBalanceMode();
+			if(mode === LOAD_BALANCE_MODE_NONE) {
+				if(first_time === true) {
+					LoadBalanceNone(occupation);
+				}
+			}
+			else if (mode === LOAD_BALANCE_MODE_SFC) {
+				LoadBalanceSFC(occupation);
+			}
+			else {
+				alert('load balancing mode not implemented');
+			}
+			
+			if(update_meshes_immediately) {
+				for (var x = 0; x < NUM_CELLS; ++x) {
+					var xa = occupation[x];
+					for (var y = 0; y < NUM_CELLS; ++y) {
+						var ya = xa[y];
+						for (var z = 0; z < NUM_CELLS; ++z) {
+							var cell = ya[z];
+							if(cell.length === 0) {
+								continue;
+							}
+							
+							cell[0].node.RemoveAllEntities('cube_mesh');
+							cell[0].node.AddEntity(cube_meshes[cell[0].worker_index]);
+						}
+					}
+				}
+			}
+		};
+		
+		
+		// -----------------------------------------------------
+		var EstimateCommunicationCost = function(occupation) {
+			var cost = 0;
+			for (var x = 0; x < NUM_CELLS; ++x) {
+				var xa = occupation[x];
+				for (var y = 0; y < NUM_CELLS; ++y) {
+					var ya = xa[y];
+					for (var z = 0; z < NUM_CELLS; ++z) {
+					
+						var current_cell = ya[z];
+						if(current_cell.length === 0) {
+							continue;
+						}
+						
+						var my_worker_index = current_cell[0].worker_index;
+					
+						// check all neighbours of this cell
+						for(var xd = -1; xd <= 1; ++xd) {
+							if (x + xd < 0 || x + xd >= NUM_CELLS) {
+								continue;
+							}
+									
+							for(var yd = -1; yd <= 1; ++yd) {
+								if (y + yd < 0 || y + yd >= NUM_CELLS) {
+									continue;
+								}
+							
+								for(var zd = -1; zd <= 1; ++zd) {
+									if (xd == 0 && yd == 0 && zd == 0) {
+										continue;
+									}
+									
+									if (z + zd < 0 || z + zd >= NUM_CELLS) {
+										continue;
+									}
+									
+									var n = occupation[x + xd][y + yd][z + zd];
+									if(n.length === 0) {
+										continue;
+									}
+									if(my_worker_index !== n[0].worker_index) {
+										++cost;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			// we counted all twice
+			return cost / 2
+		};
+		
+		
+		var stats = [];
+		
+		// -----------------------------------------------------
+		var UpdateStats = function() {
+			var cost = EstimateCommunicationCost(occupation);
+			
+			stats.push(cost);
+			
+			$('#com_cost_step').html(current_step);
+			$('#com_cost').html(cost);
+			
+			var acc = 0;
+			for(var i = 0; i < stats.length; ++i) {
+				acc += stats[i];
+			} 
+			acc /= stats.length;
+			
+			$('#com_cost_avg').html(acc.toFixed(3));
+			
+			var avg = acc;
+			acc = 0;
+			for(var i = 0; i < stats.length; ++i) {
+				acc += (stats[i] - avg) * (stats[i] - avg);
+			} 
+			acc = Math.sqrt(acc / stats.length);
+			
+			$('#com_cost_dev').html(acc.toFixed(3));
 		};
 		
 		
@@ -485,10 +740,33 @@ function run() {
 				}
 			}
 			
-			LoadBalance();
+			LoadBalance(occupation);
+			UpdateStats(occupation);
 		};
 		
-		var occupation = InitializeCells();
+			
+		var current_mode;
+		var occupation;
+		
+		// -----------------------------------------------------
+		/* global!*/ LoadBalanceMode = function(mode) {
+			if(mode === undefined) {
+				return current_mode;
+			}
+			
+			stats = [];
+			
+			// always reset the scene
+			current_mode = mode;
+			
+			if(occupation !== undefined) {
+				ClearCells(occupation);
+			}
+			occupation = InitializeCells();
+			LoadBalance(occupation, true, true);
+			UpdateStats(occupation);
+		};
+		
 		
 		// add primary camera and setup view position
 		var cam = medea.CreateCameraNode();
@@ -534,8 +812,15 @@ function run() {
 			}
 			return true;
 		});	
-        
+		
+
+		
+		// init scene
+		LoadBalanceMode (LOAD_BALANCE_MODE_NONE);
+		
+		
 		// medea.SetDebugPanel(null,true);
 		medea.Start();
+	
 	});
 }

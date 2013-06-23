@@ -25,12 +25,32 @@
 	<br/>
 	
 	<div id="pick-mode">
-		<input type="radio" id="radio1" name="radio"><label for="radio1">No Load Balancing</label>
-		<input type="radio" id="radio2" name="radio" checked="checked"><label for="radio2">SFC</label>
+		<input type="radio" id="radio1" name="radio" checked="checked"><label for="radio1">No Load Balancing</label>
+		<input type="radio" id="radio2" name="radio"><label for="radio2">SFC</label>
 		<input type="radio" id="radio3" name="radio"><label for="radio3">kd-Tree</label>
 	</div>
 	<br/>
-	<div style="position: absolute; top: 130px; left:20px;"><font color="white" face="Calibri">Communication Cost:</font></div>
+	<div style="position: absolute; top: 130px; left:20px;">
+		<font color="white" face="Calibri">
+		
+		<div>Time Step (t)</div>
+		<font color="#98CC31"> <div id="com_cost_step"> </div> </font>
+		<br/>
+		
+		<div>Communication Cost (CC)</div>
+		<font color="#98CC31"> <div id="com_cost"> </div> </font>
+		<br/>
+		
+		<div>Mean CC</div>
+		<font color="#98CC31"> <div id="com_cost_avg"> </div> </font>
+		<br/>
+		
+		<div>Standard Deviation CC</div>
+		<font color="#98CC31"> <div id="com_cost_dev"> </div> </font>
+		<br/>
+		
+		</font>	
+	</div>
 
     <canvas id="canvas" style="border: none;" width="950" height="650"></canvas>
 
