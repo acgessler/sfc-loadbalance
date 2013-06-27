@@ -37,7 +37,7 @@ function run() {
 		"--------",
 		"--------",
 		"---0----",
-		"--00----",
+		"--030---",
 		"--------",
 		"--------",
 		"--------",
@@ -95,15 +95,15 @@ function run() {
 		"-11-----",
 		"--------",
 		"--------",
-		"--------",
-		"-----33-"
+		"----33--",
+		"----133-"
 		],
 		
 		[
 		"--------",
 		"----2---",
 		"1---2---",
-		"11------",
+		"11-333--",
 		"--------",
 		"--------",
 		"---33---",
@@ -126,14 +126,14 @@ function run() {
 		[1,1,0],
 		[0,1,0],
 		[1,0,1],
-		[0,-1,-1]
+		[1,-1,-1]
 	];
 	
 	// number of cells on each axis
 	var NUM_CELLS = 8;
 	
 	// number of workers to distribute load to
-	var NUM_WORKERS = 3;
+	var NUM_WORKERS = 4;
 
 
 	medea.Ready("canvas",{dataroot:'medea/data'},['debug','keycodes', 'standardmesh', 'simpleanim'],function() {
@@ -254,7 +254,8 @@ function run() {
 			var materials = [
 				medea.CreateSimpleMaterialFromColor([250/255.0,126/255.0,211/255.0], true),
 				medea.CreateSimpleMaterialFromColor([212/255.0,255/255.0,102/255.0], true),
-				medea.CreateSimpleMaterialFromColor([127/255.0,250/255.0,248/255.0], true)
+				medea.CreateSimpleMaterialFromColor([127/255.0,250/255.0,248/255.0], true),
+				medea.CreateSimpleMaterialFromColor([170/255.0,170/255.0,170/255.0], true)
 			];
 			
 			if(materials.length !== NUM_WORKERS) {
