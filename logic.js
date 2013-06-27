@@ -1,7 +1,10 @@
 
 
-	// export SetLoadBalanceMode() entry point to jQuery
+	// export LoadBalanceMode() entry point to jQuery
 	var LoadBalanceMode;
+	
+	// export UpdateVisualization() entry point to jQuery
+	var UpdateVisualization;
 
 	var LOAD_BALANCE_MODE_NONE = 0;
 	var LOAD_BALANCE_MODE_SFC  = 1;
@@ -13,16 +16,20 @@
 $(document).ready(function() {
 	$( "#pick-mode" ).buttonset();
 	
+	$("#check").button();
+	$("#check").click(function() {
+		UpdateVisualization($(this).is(':checked'));
+	});
 	
 	$('#radio1').click(function() {
 		LoadBalanceMode(LOAD_BALANCE_MODE_NONE);
 	});
 	
-	$( '#radio2').click(function() {
+	$('#radio2').click(function() {
 		LoadBalanceMode(LOAD_BALANCE_MODE_SFC);
 	});
 	
-	$( '#radio3').click(function() {
+	$('#radio3').click(function() {
 		LoadBalanceMode(LOAD_BALANCE_MODE_KD);
 	}); 
 });
@@ -212,11 +219,11 @@ function run() {
 			var num_points = NUM_CELLS * NUM_CELLS* NUM_CELLS;
 			for(var i = 0; i < num_points; ++i) {
 				out.push(i/num_points);
-				out.push(0);
+				out.push(1.0 - i/num_points);
 				out.push(1.0 - i/num_points);
 				
 				out.push(i/num_points);
-				out.push(0);
+				out.push(1.0 - i/num_points);
 				out.push(1.0 - i/num_points);
 			}
 			
@@ -766,6 +773,21 @@ function run() {
 			occupation = InitializeCells();
 			LoadBalance(occupation, true, true);
 			UpdateStats(occupation);
+			
+			UpdateVisualization();
+		};
+		
+		var current_visualization_state = false;
+		
+		// -----------------------------------------------------
+		/* global!*/ UpdateVisualization = function(on_off) {
+		
+			if(on_off === undefined) {
+				on_off = current_visualization_state;
+			}
+			
+			var mode = LoadBalanceMode();
+			hilbert_node.Enabled(on_off === true && mode === LOAD_BALANCE_MODE_SFC);
 		};
 		
 		
