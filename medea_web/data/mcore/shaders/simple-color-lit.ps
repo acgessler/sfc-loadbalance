@@ -1,0 +1,20 @@
+/* medea - an Open Source, WebGL-based 3d engine for next-generation browser games.
+ * (or alternatively, for clumsy and mostly useless tech demos written solely for fun)
+ *
+ * medea is (c) 2011, Alexander C. Gessler
+ * licensed under the terms and conditions of a 3 clause BSD license.
+ */
+
+#include <remote:mcore/shaders/core.psh> 
+
+uniform vec4 color;
+uniform vec3 lightdir;
+
+void main()
+{
+	gl_FragColor.a = 1.0;
+	
+	float n = max(0.0,dot(normalize(lightdir), normalize(FetchNormal())));
+	gl_FragColor.rgb = color.rgb * (0.2 + n);
+}
+

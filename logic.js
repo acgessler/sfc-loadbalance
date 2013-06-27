@@ -143,7 +143,7 @@ function run() {
 	var NUM_WORKERS = 4;
 
 
-	medea.Ready("canvas",{dataroot:'medea/data'},['debug','keycodes', 'standardmesh', 'simpleanim'],function() {
+	medea.Ready("canvas",{dataroot:'medea_web/data'},['debug','keycodes', 'standardmesh', 'simpleanim'],function() {
 	
 		// -----------------------------------------------------
 		var GetOutlineVertices =  function() {
