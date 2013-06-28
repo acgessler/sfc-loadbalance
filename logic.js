@@ -143,7 +143,7 @@ function run() {
 	var NUM_WORKERS = 4;
 
 
-	medea.Ready("canvas",{dataroot:'medea/data'},['debug','keycodes', 'standardmesh', 'simpleanim'],function() {
+	medea.Ready("canvas",{dataroot:'medea_web/data'},['debug','keycodes', 'standardmesh', 'simpleanim'],function() {
 	
 		// -----------------------------------------------------
 		var GetOutlineVertices =  function() {
@@ -612,6 +612,180 @@ function run() {
 		
 		
 		// -----------------------------------------------------
+		// Do fake kd-tree load balancing
+		var LoadBalanceKD = function(occupation) {
+		
+			if(NUM_WORKERS != 4) { // TODO
+				alert(NUM_WORKERS);
+			}
+			
+			var rek = function(worker_range, k, count_loads, range) {
+				
+				var loads_handled = 0;
+				var new_range_a;
+				var new_range_b;
+				
+				var new_worker_range_a;
+				var new_worker_range_b;	
+				
+				var index = -1;
+				if(worker_range[0] + 2 === worker_range[1]) {
+					index = worker_range[0];
+				}
+			
+				// walk along axis k
+				for (var k1 = range[0][0]; k1 < range[0][1]; ++k1) {
+					for (var k2 = range[1][0]; k2 < range[1][1]; ++k2) {
+						for (var k3 = range[2][0]; k3 < range[2][1]; ++k3) {
+							var cell;
+							
+							if (k === 0) {
+								cell = occupation[k1][k2][k3];
+							}
+							else if (k === 2) {
+								cell = occupation[k3][k1][k2];
+							}
+							else if (k === 1) {
+								cell = occupation[k2][k3][k1];
+							}
+							else {
+								alert(false);
+							}
+							
+							if(cell.length === 0) {
+								continue;
+							}
+							
+							if(++loads_handled === (count_loads >> 1)) {
+								
+								if(index !== -1) {
+									++index;
+								}
+								
+								// split here -- TODO
+								if (k === 0) {
+									new_range_a = [
+										[range[2][0],range[2][1]],
+										[range[0][0],k1],
+										[range[1][0],range[1][1]]
+									];
+									
+									new_range_b = [
+										[range[2][0],range[2][1]],
+										[k1,range[0][1]],
+										[range[1][0],range[1][1]]
+									];
+								}
+								else if (k === 1) {
+									new_range_a = [
+										[range[1][0],range[1][1]],
+										[range[2][0],range[2][1]],
+										[range[0][0],k1]
+									];
+									
+									new_range_b = [
+										[range[1][0],range[1][1]],
+										[range[2][0],range[2][1]],
+										[k1,range[0][1]],
+									];
+								}
+								else if (k === 2) {
+									new_range_a = [
+										[range[0][0],k1],
+										[range[1][0],range[1][1]],
+										[range[2][0],range[2][1]]
+										
+									];
+									
+									new_range_b = [
+										[k1,range[0][1]],
+										[range[1][0],range[1][1]],
+										[range[2][0],range[2][1]],
+									];
+								}
+								
+								new_worker_range_a = [worker_range[0], (worker_range[0]+worker_range[1]) >> 1];
+								
+							
+								new_worker_range_b = [(worker_range[0]+worker_range[1]) >> 1, worker_range[1]];
+							}
+							
+							if(index !== -1) {
+								cell[0].worker_index = index;
+							}
+						}
+					}
+				}
+				
+				
+				
+				// check termination condition
+				if(index !== -1) {
+					return;
+				}
+				
+				if(new_worker_range_a === undefined) {
+					alert('split not found: ' + (count_loads >> 1) + ' --- ' + loads_handled);
+				}
+				
+				rek(new_worker_range_a, (k+1) % 3, count_loads >> 1, new_range_a);
+				rek(new_worker_range_b, (k+1) % 3, count_loads >> 1, new_range_b);
+			};
+			
+			/*
+			// only try axes on top-level - I said it was a "fake" kd.
+			var xs = rek([0,NUM_WORKERS],0,  CountLoads(occupation), [
+				[0, NUM_CELLS],
+				[0, NUM_CELLS],
+				[0, NUM_CELLS]
+			]);
+			
+			var xcost = EstimateCommunicationCost(occupation);
+			
+			var ys = rek([0,NUM_WORKERS],1,  CountLoads(occupation), [
+				[0, NUM_CELLS],
+				[0, NUM_CELLS],
+				[0, NUM_CELLS]
+			]);
+			
+			var ycost = EstimateCommunicationCost(occupation);
+			
+			var zs = rek([0,NUM_WORKERS],2,  CountLoads(occupation), [
+				[0, NUM_CELLS],
+				[0, NUM_CELLS],
+				[0, NUM_CELLS]
+			]);
+			
+			var zcost = EstimateCommunicationCost(occupation);
+			
+			var axis = -1;
+			if (xcost < ycost) {
+				if (xcost < zcost) {
+					axis = 0;
+				}
+				else {
+					axis = 2;
+				}
+			}
+			else {
+				if (ycost < zcost) {
+					axis = 1;
+				}
+				else {
+					axis = 2;
+				}
+			}
+			*/
+			axis = 0;
+			rek([0,NUM_WORKERS],axis,  CountLoads(occupation), [
+				[0, NUM_CELLS],
+				[0, NUM_CELLS],
+				[0, NUM_CELLS]
+			]);
+		};
+		
+		
+		// -----------------------------------------------------
 		var LoadBalance = function(occupation, first_time, update_meshes_immediately) {
 			var mode = LoadBalanceMode();
 			if(mode === LOAD_BALANCE_MODE_NONE) {
@@ -621,6 +795,9 @@ function run() {
 			}
 			else if (mode === LOAD_BALANCE_MODE_SFC) {
 				LoadBalanceSFC(occupation);
+			}
+			else if (mode === LOAD_BALANCE_MODE_KD) {
+				LoadBalanceKD(occupation);
 			}
 			else {
 				alert('load balancing mode not implemented');
