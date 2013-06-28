@@ -629,6 +629,8 @@ function run() {
 				var new_worker_range_b;	
 				
 				var index = -1;
+				
+				// check if we're down to two partitions
 				if(worker_range[0] + 2 === worker_range[1]) {
 					index = worker_range[0];
 				}
@@ -642,10 +644,10 @@ function run() {
 							if (k === 0) {
 								cell = occupation[k1][k2][k3];
 							}
-							else if (k === 2) {
+							else if (k === 1) {
 								cell = occupation[k3][k1][k2];
 							}
-							else if (k === 1) {
+							else if (k === 2) {
 								cell = occupation[k2][k3][k1];
 							}
 							else {
@@ -705,8 +707,6 @@ function run() {
 								}
 								
 								new_worker_range_a = [worker_range[0], (worker_range[0]+worker_range[1]) >> 1];
-								
-							
 								new_worker_range_b = [(worker_range[0]+worker_range[1]) >> 1, worker_range[1]];
 							}
 							
@@ -732,7 +732,7 @@ function run() {
 				rek(new_worker_range_b, (k+1) % 3, count_loads >> 1, new_range_b);
 			};
 			
-			/*
+			
 			// only try axes on top-level - I said it was a "fake" kd.
 			var xs = rek([0,NUM_WORKERS],0,  CountLoads(occupation), [
 				[0, NUM_CELLS],
@@ -775,8 +775,7 @@ function run() {
 					axis = 2;
 				}
 			}
-			*/
-			axis = 0;
+			
 			rek([0,NUM_WORKERS],axis,  CountLoads(occupation), [
 				[0, NUM_CELLS],
 				[0, NUM_CELLS],
